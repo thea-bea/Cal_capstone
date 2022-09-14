@@ -1,0 +1,341 @@
+---
+title: "Capstone_Data_MASTERFile"
+author: "Thea B."
+date: "2/18/2021"
+output: html_document
+---
+
+Cleaning & exporting cleaned dataset
+
+#Importing original dataset
+```{r}
+library(pacman)
+p_load(cowplot, tidyverse, haven, summarytools, survey, srvyr, plotrix, jtools, tableone, lmtest, Hmisc, dummies, aod)
+LTM_sav <- read_sav("LTMdata_2.public.sav")
+```
+##Converting .sav to .csv and exporting
+```{r, eval = FALSE}
+write.csv(LTM_sav, "LTM_m.csv")
+```
+##Loading .csv data
+```{r}
+LTM <- read.csv("LTM_m.csv",
+                stringsAsFactors = T)
+names(LTM)
+```
+
+#Getting average number of months since birth
+```{r}
+mean(LTM$babyageM)
+#average months = 5.68
+```
+
+#Cleaning/creating variables
+##Pregnancy care provider
+```{r}
+LTM$preg_provider <- LTM$Q805
+
+LTM$preg_provider_3 <- NA
+LTM$preg_provider_3[LTM$preg_provider == 1] = 1
+LTM$preg_provider_3[LTM$preg_provider == 2] = 2
+LTM$preg_provider_3[LTM$preg_provider == 3] = 3
+LTM$preg_provider_3[LTM$preg_provider == 4] = 4
+LTM$preg_provider_3[LTM$preg_provider == 5 | LTM$preg_provider == 6] = 5
+
+#Leveling and labeling
+LTM$preg_provider_3 <- factor(LTM$preg_provider_3, levels = c(1, 2, 3, 4, 5), 
+                    labels = c("OB or OBGYN", "Family Medicine Doctor", "Doctor Unsure Type", "CNM", "NP or PA"))
+#Checking
+LTM %>%
+  group_by(preg_provider_3 ) %>%
+  count()
+```
+##Depression screening
+```{r}
+LTM$depression_screening <- LTM$Q1415c
+
+#Leveling and labeling
+LTM$depression_screening <- factor(LTM$depression_screening, levels = c(1,2),
+                                   labels = c("Yes", "No"))
+#Checking
+LTM %>%
+  group_by(depression_screening) %>%
+  count()
+```
+##Doula support
+```{r}
+LTM$doula <- LTM$Q1105
+
+LTM$doula_3 <- NA
+LTM$doula_3[LTM$doula == 1] = 1
+LTM$doula_3[LTM$doula == 2 | LTM$doula == 3] = 0
+LTM$doula_3 <- factor(LTM$doula_3, levels = c(1,0),
+                                   labels = c("Yes", "No"))
+LTM %>%
+  group_by(doula_3) %>%
+  count()
+```
+##Race
+```{r}
+LTM$racegrp_3 <- NA
+LTM$racegrp_3[LTM$racegrp == 1] = 1
+LTM$racegrp_3[LTM$racegrp == 2] = 2
+LTM$racegrp_3[LTM$racegrp == 3] = 3
+LTM$racegrp_3[LTM$racegrp == 4] = 4
+LTM$racegrp_3[LTM$racegrp == 5 | LTM$racegrp == 6 | LTM$racegrp == 7] = 5
+LTM$racegrp_3 <- factor(LTM$racegrp_3, levels = c(1,2,3,4,5),
+                        labels = c("Hispanic/Latina", "White (non-Hispanic)", "Black (non-Hispanic)", "Asian/Pacific Islander (non-Hispanic)", "Other/Mixed Race (non-Hispanic)"))
+LTM %>%
+  group_by(racegrp_3) %>%
+  count()
+```
+##Insurance_3
+```{r}
+LTM$insurance_3 <- NA
+LTM$insurance_3[LTM$insurance == 1] = 1
+LTM$insurance_3[LTM$insurance == 2 | LTM$insurance == 3] = 2
+LTM$insurance_3[LTM$insurance == 4] = NA
+LTM$insurance_3[LTM$insurance == 5] = 3
+LTM$insurance_3 <- factor(LTM$insurance_3, levels = c(1,2,3),
+                        labels = c("Medi-Cal", "Private", "Uninsured"))
+LTM %>%
+  group_by(insurance_3) %>%
+  count()
+```
+##Insurance_4
+```{r}
+LTM$insurance
+LTM$insurance_4 <- NA
+LTM$insurance_4[LTM$insurance == 1 | LTM$insurance == 5] = 1
+LTM$insurance_4[LTM$insurance == 2 | LTM$insurance == 3] = 2
+LTM$insurance_4[LTM$insurance == 4] = NA
+LTM$insurance_4 <- factor(LTM$insurance_4, levels = c(1,2),
+                        labels = c("Medi-Cal or Uninsured", "Private"))
+LTM %>%
+  group_by(insurance_4) %>%
+  count()
+```
+##Insurance_5
+```{r}
+LTM$insurance_5 <- NA
+LTM$insurance_5[LTM$insurance == 2 | LTM$insurance == 3] = 1
+LTM$insurance_5[LTM$insurance == 1 | LTM$insurance == 4 | LTM$insurance == 5] = 2
+LTM$insurance_5 <- factor(LTM$insurance_5, levels = c(1,2),
+                               labels = c("Private Insurance = Yes", "Private Insurance = No"))
+LTM %>%
+  group_by(insurance_5) %>%
+  count()
+```
+##Insurance_6
+```{r}
+LTM$insurance_6 <- NA
+LTM$insurance_6[LTM$insurance == 2 | LTM$insurance == 3] = 1
+LTM$insurance_6[LTM$insurance == 1 | LTM$insurance == 5] = 2
+LTM$insurance_6[LTM$insurance == 4] = 3
+LTM$insurance_6 <- factor(LTM$insurance_6, levels = c(1,2,3),
+                               labels = c("Private Insurance = Yes", "Private Insurance = No", "Private Insurance = Unsure"))
+LTM %>%
+  group_by(insurance_6) %>%
+  count()
+```
+##Education level
+```{r}
+LTM$education <- LTM$Q1860
+
+LTM$education_3 <- NA
+LTM$education_3[LTM$education == 1 | LTM$education == 2] = 1
+LTM$education_3[LTM$education == 3 | LTM$education == 4 | LTM$education == 5] = 2
+LTM$education_3[LTM$education == 6 | LTM$education == 7] = 3
+LTM$education_3[LTM$education == 8] = 4
+
+LTM$education_3 <- factor(LTM$education_3, levels = c(1,2,3,4),
+                          labels = c("Less than High School", "High School Diploma or GED", "College Degree", "Graduate Degree"))
+
+LTM %>%
+  group_by(education_3) %>%
+  count()
+```
+##Number of children as categorical
+```{r}
+LTM$num_children <- LTM$Q610
+
+LTM$num_children_cat_3 <- cut(LTM$num_children,
+                             breaks = c(0,1,2,10),
+                             labels = c("1", "2", "3 or more"),
+                             include.lowest = TRUE,
+                             right = TRUE)
+#Checking
+LTM %>%
+  group_by(num_children_cat_3) %>%
+  count()
+```
+##Primary language
+```{r}
+LTM$prim_lang <- LTM$Q1845
+
+LTM$prim_lang_3 <- NA
+LTM$prim_lang_3[LTM$prim_lang == 1 | LTM$prim_lang == 3] = 1
+LTM$prim_lang_3[LTM$prim_lang == 2] = 2
+LTM$prim_lang_3[LTM$prim_lang == 4 | LTM$prim_lang == 5] = 3
+
+LTM$prim_lang_3 <- factor(LTM$prim_lang_3, levels = c(1:3),
+                        labels = c("English", "Spanish", "Other"))
+
+LTM %>%
+  group_by(prim_lang_3) %>%
+  count()
+```
+##Marital status v1 (4 cat)
+```{r}
+LTM$marital_status <- LTM$Q1820
+
+LTM$marital_status_3 <- factor(LTM$marital_status, levels = c(1:4),
+                             labels = c("Married", "Living with someone as if married", "Separated, divorced or widowed", "Single, never married"))
+LTM %>% 
+  group_by(marital_status_3) %>%
+  count()
+```
+###Marital status FINAL VERSION (2 cat)
+```{r}
+LTM$marital_status_4 <- NA
+LTM$marital_status_4[LTM$Q1820 == 1| LTM$Q1820 ==2] = 0
+LTM$marital_status_4[LTM$Q1820 == 3 | LTM$Q1820 == 4] = 1
+LTM$marital_status_4 <- factor (LTM$marital_status_4, levels = c(0,1), labels = c("Married or Living Together as if Married", "Single, Divorced, or Widowed"))
+
+#Checking
+LTM %>%
+  group_by(LTM$marital_status_4) %>%
+  count()
+```
+##Age (categorical)
+```{r}
+LTM$age_3 <- LTM$Q1842
+LTM$age_cat_3 <- cut(LTM$age_3,
+                             breaks = c(0,24,29,34,46),
+                             labels = c("24 and under", "25-29 years", "30-34 years", "35 and over"),
+                             include.lowest = TRUE,
+                             right = TRUE)
+LTM %>%
+  group_by(age_cat_3) %>%
+  count()
+```
+##Creating binary anxiety and depression variables
+```{r}
+LTM$preg_depression_3 <- NA
+LTM$preg_anxiety_3 <- NA
+
+#Anxiety:
+LTM$preg_anxiety_3[LTM$Q925a >= 3
+                 | LTM$Q925b >= 3] = 1
+LTM$preg_anxiety_3[LTM$Q925a < 3
+                 & LTM$Q925b < 3] = 0
+LTM$preg_anxiety_3[is.na(LTM$Q925a)
+                 |is.na(LTM$Q925b)] = NA
+#Checking
+LTM$preg_anxiety_3[1:100]
+LTM$Q925a[1:100]
+LTM$Q925b[1:100]
+
+#Depression: 
+LTM$preg_depression_3[LTM$Q925c >= 3
+                 | LTM$Q925d >= 3] = 1
+LTM$preg_depression_3[LTM$Q925c < 3
+                 & LTM$Q925d < 3] = 0
+LTM$preg_depression_3[is.na(LTM$Q925c)
+                 |is.na(LTM$Q925d)] = NA
+#Checking
+LTM$preg_depression_3[1:100]
+LTM$Q925c[1:100]
+LTM$Q925d[1:100]
+
+LTM %>%
+  group_by(Q925a, Q925b, preg_anxiety_3) %>%
+  count()
+LTM %>%
+  group_by(Q925c, Q925d, preg_depression_3) %>%
+  count()
+```
+###Creating levels and labels for binary anxiety/depression
+```{r}
+#Anxiety
+class(LTM$preg_anxiety_3)
+class(LTM$preg_depression_3)
+LTM$preg_anxiety_3 <- factor(LTM$preg_anxiety_3, levels = c(0,1),
+                           labels = c("No", "Yes"))
+#Checking
+class(LTM$preg_anxiety_3)
+levels(LTM$preg_anxiety_3)
+LTM %>% 
+  group_by(preg_anxiety_3) %>%
+  count()
+
+#Depression
+LTM$preg_depression_3 <- factor(LTM$preg_depression_3, levels = c(0,1),
+                           labels = c("No", "Yes"))
+#Checking
+class(LTM$preg_depression_3)
+levels(LTM$preg_depression_3)
+LTM %>% 
+  group_by(preg_depression_3) %>%
+  count()
+```
+##Mental health concern during pregnancy (composite of preg_anxiety and preg_depression)
+```{r}
+LTM$preg_MH_issue <- NA
+LTM$preg_MH_issue[LTM$preg_anxiety_3 == "No" & LTM$preg_depression_3 == "No"] = 0
+LTM$preg_MH_issue[LTM$preg_anxiety_3 == "Yes" | LTM$preg_depression_3 == "Yes"] = 1
+LTM$preg_MH_issue <- factor(LTM$preg_MH_issue, levels = c(0,1), labels = c("No", "Yes"))
+#Checking
+class(LTM$preg_MH_issue)
+LTM %>%
+  group_by(preg_MH_issue) %>%
+  count()
+ctable(LTM$preg_anxiety_3, LTM$preg_depression_3)
+```
+##Number of postpartum visits in 8 weeks after the birth
+```{r}
+LTM$postpartum_visit <- LTM$Q1405
+
+LTM$num_PP_visits_8wks <- NA
+LTM$num_PP_visits_8wks[LTM$Q1405 == 0] = 0
+LTM$num_PP_visits_8wks[LTM$Q1405 == 1] = 1
+LTM$num_PP_visits_8wks[LTM$Q1405 == 2] = 2
+LTM$num_PP_visits_8wks[LTM$Q1405 >= 3] = 3
+
+#Leveling and labeling
+LTM$num_PP_visits_8wks <- factor(LTM$num_PP_visits_8wks, levels = c(0:3), labels = c("0", "1", "2", "3 or more"))
+
+#Checking
+LTM %>%
+  group_by(num_PP_visits_8wks) %>%
+  count()
+```
+##Binary PP office visit variable for sub-analysis
+```{r}
+names(LTM)
+class(LTM$Q1405)
+LTM$ppvisit_SA <- NA
+LTM$ppvisit_SA[LTM$Q1405 == 0] = 0
+LTM$ppvisit_SA[LTM$Q1405 >= 1] = 1
+LTM %>%
+  group_by(ppvisit_SA) %>%
+  count() #success!
+
+#Labeling
+LTM$ppvisit_SA <- factor(LTM$ppvisit_SA, levels = c(0,1), labels = c("0", "1 or more"))
+
+#Checking association
+ctable(LTM$preg_depression_3, LTM$ppvisit_SA)
+```
+
+#Dropping unused columns, exporting new dataset
+```{r}
+LTM_cols <- select(LTM, -c(mode, Q_Language, Q520, Q715, Q716, Q740, Q850, Q855, Q870, Q885, Q890, Q895, Q1110, Q1111a, Q1111b, Q1111c, Q1111d, Q1111e, Q1112, Q1113a, Q1113b, Q1113c, Q1113d, Q1113e, Q1113f, Q1113g, Q1113h, Q1113i, Q1120, Q1125, Q1130a, Q1130b, Q1130c, Q1130d, Q1130e, Q1130f, Q1132, Q1133, Q1135, Q1130a, Q1140a, Q1140b, Q1145a, Q1145b, Q1145c, Q1145d, Q1145f, Q1147a, Q1147b, Q1147c, Q1147d, Q1147e, Q1147f, Q1147g, Q1147h, Q1147i, Q1150, Q1176, Q1181, Q1185, Q1186, Q1210a, Q1210b, Q1210c, Q1210d, Q1210e, Q1210f, Q1210g, Q1210h, Q1210i, Q1210j, Q1210k, Q1210l, Q1210m, Q1210n, Q1210o, Q1215, Q1220, Q1230, Q1235, Q1240, Q1245, Q1250, Q1255, Q1260, Q1265, Q1270, Q1275a, Q1275a, Q1275b, Q1275c, Q1305, Q1310a, Q1310b, Q1310c, Q1310d, Q1315a, Q1315b, Q1315c, Q1320a, Q1320b, Q1325a, Q1325b, Q1325c, Q1415a, Q1415b, Q1480b, Q1510a, Q1510b, Q1510c, Q1525, Q1615, Q1630, Q1705a, Q1705b, Q1710a, Q1710b, Q1710c, Q1710d, Q1715a, Q1715b, Q1715c, Q1715d, Q1715e, Q1715f, Q1715g, Q1835, qdate, babyageM, Q816_TEXT, calcgestage, Q895_TEXT, Q1111_TEXT, Q1113_TEXT, Q1145_TEXT, Q1147_TEXT, Q1155, Q1165_TEXT, Q1170a, Q1170b, Q1170c, babywtgm, Q1190, Q1195, Q1255_TEXT, Q1260_TEXT, Q1515b, Q1520a, Q1520b, bfexclwks, bfwkstop, Q1620a, Q1620b, workage, Q1625a, Q1625b, workagef, Q1715_TEXT, Q1805a, Q1805b, Q1805c, height, Q1810E, Q1810S, WtBeforePreg, bmi, Q1811a, Q1811b, wtgain, Q1815a, Q1815b, currentwt, Q1825_TEXT, Q1830, Q1840))
+
+#checking
+names(LTM_cols)
+```
+##Exporting LTM_cols
+```{r, eval = F}
+write.csv(LTM_cols, "LTM_cols_M.csv", row.names = F)
+```

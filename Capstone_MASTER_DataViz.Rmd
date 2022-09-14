@@ -1,0 +1,381 @@
+---
+title: "Capstone_MASTER_DataViz"
+author: "Thea B."
+date: "4/3/2021"
+output: html_document
+---
+
+#Loading data and packages
+```{r}
+LTM_cols <- read.csv("LTM_cols_April3.csv", 
+                     stringsAsFactors = TRUE)
+library(pacman)
+p_load(cowplot, tidyverse, haven, summarytools, survey, srvyr, plotrix, jtools, tableone, lmtest, Hmisc, dummies, aod, RColorBrewer, viridis)
+
+?read.csv
+```
+
+#Reordering variables
+```{r}
+#Preg Provider
+LTM_cols$preg_provider_4 <- factor(LTM_cols$preg_provider_3,
+                    levels = c("OB or OBGYN", "Family Medicine Doctor", "Doctor Unsure Type", "CNM", "NP or PA")) 
+#Race
+LTM_cols$racegrp_4 <- factor(LTM_cols$racegrp_3,
+                    levels = c("White (non-Hispanic)", "Black (non-Hispanic)", "Hispanic/Latina", "Asian/Pacific Islander (non-Hispanic)", "Other/Mixed Race (non-Hispanic)"))
+##Checking
+LTM_cols %>%
+  group_by(racegrp_4) %>%
+  count() #ok!
+#Education
+LTM_cols$education_4 <- factor(LTM_cols$education_3,
+                    levels = c("Less than High School", "High School Diploma or GED", "College Degree", "Graduate Degree"))
+#Primary language
+LTM_cols$prim_lang_4 <- factor(LTM_cols$prim_lang_3,
+                    levels = c("English", "Spanish", "Other"))
+
+#new version of race variable for better legend
+LTM_cols$racegrp_leg <- NA
+LTM_cols$racegrp_leg[LTM_cols$racegrp == 1] = 1
+LTM_cols$racegrp_leg[LTM_cols$racegrp == 2] = 2
+LTM_cols$racegrp_leg[LTM_cols$racegrp == 3] = 3
+LTM_cols$racegrp_leg[LTM_cols$racegrp == 4] = 4
+LTM_cols$racegrp_leg[LTM_cols$racegrp == 5 | LTM_cols$racegrp == 6 | LTM_cols$racegrp == 7] = 5
+LTM_cols$racegrp_leg <- factor(LTM_cols$racegrp_leg, levels = c(1,2,3,4,5),
+                        labels = c("Hispanic/Latina", "White", "Black", "Asian/Pacific Islander", "Other/Mixed Race"))
+
+LTM_cols$racegrp_leg_ordered <- factor(LTM_cols$racegrp_leg,
+                                       levels = c("White", "Black", "Hispanic/Latina", "Asian/Pacific Islander", "Other/Mixed Race"))
+```
+
+#Subsetting to match excl criteria
+##Full study population
+```{r}
+names(LTM_cols)
+LTM_SA_A <- subset(LTM_cols, !is.na(preg_provider_4))
+names(LTM_SA_A) 
+LTM_SA_A %>% 
+  group_by(ppvisit_SA) %>%
+  count()
+ctable(LTM_SA_A$ppvisit_SA, LTM_SA_A$Q1415c)
+LTM_SA_B <- subset(LTM_SA_A, (ppvisit_SA == "1 or more" & !is.na(Q1415c)) | ppvisit_SA == "0") 
+LTM_SA_B %>%
+  group_by(ppvisit_SA) %>%
+  count()
+```
+##Subsetting data to match excl criteria - main study sample
+```{r}
+LTM_cols_3 <- subset(LTM_cols, !is.na(postpartum_visit))
+LTM_cols_3 %>%
+  group_by(postpartum_visit) %>%
+  count()
+#Postpartum visits at least one:
+LTM_cols_4 <- subset(LTM_cols_3, postpartum_visit >= 1)
+LTM_cols_4 %>%
+  group_by(postpartum_visit) %>%
+  count()
+#Complete data on provider type:
+LTM_cols_5 <- subset(LTM_cols_4, !is.na(preg_provider_4))
+LTM_cols_5 %>%
+  group_by(preg_provider_4) %>%
+  count()
+#Complete data on depression screening:
+LTM_cols_6 <- subset(LTM_cols_5, !is.na(depression_screening))
+LTM_cols_6 %>%
+  group_by(preg_provider_4) %>%
+  count()
+```
+##Subsetting data to match excl criteria - sub-sample
+```{r}
+LTM_mini_SA <- subset(LTM_SA_B, ppvisit_SA == "0")
+LTM_mini_SA %>%
+  group_by(ppvisit_SA) %>%
+  count()
+```
+
+#Data Visualization
+#Univariate
+##Main
+```{r}
+#provider type bargraph
+prov_type_main_bar <- LTM_cols_6 %>%
+  filter(!is.na(preg_provider_4)) %>%
+ggplot(aes(x = preg_provider_4)) +
+  geom_bar(color = "indianred3",
+           fill = "indianred3") +
+  labs(title = "Distribution of Maternity Care Provider Type, Main Study Sample",
+       x = "Maternity Care Provider Type",
+       y = "Count") +
+  scale_y_continuous(breaks = seq(0, 2000, 250)) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#PPD screening bargraph
+PPD_screening_main_bar <- LTM_cols_6 %>%
+  filter(!is.na(depression_screening)) %>%
+ggplot(aes(x =depression_screening)) +
+  geom_bar(color = "indianred3",
+           fill = "indianred3") +
+  labs(title = "Distribution of PPD Screening, Main Study Sample",
+       x = "PPD Screening",
+       y = "Count")
+```
+##Sub
+```{r}
+#Mental health concern during pregnancy bargraph
+MH_concern_bar_main <- LTM_cols_6 %>%
+  filter(!is.na(preg_MH_issue)) %>%
+ggplot(aes(x = preg_MH_issue)) +
+  geom_bar(color = "indianred3",
+           fill = "indianred3") +
+    xlab("Depression or Anxiety During Pregnancy") +
+    ylab("Count") +
+    ggtitle("Distribution of Depression or Anxiety During Pregnancy, \nMain Study Sample")
+
+#Mental health concern during pregnancy SUB-SAMPLE bargraph
+MH_concern_bar_sub <- LTM_mini_SA %>%
+  filter(!is.na(preg_MH_issue)) %>%
+ggplot(aes(x = preg_MH_issue)) +
+  geom_bar(color = "indianred3",
+           fill = "indianred3") +
+    xlab("Depression or Anxiety During Pregnancy") +
+    ylab("Count") +
+    ggtitle("Distribution of Depression or Anxiety During Pregnancy, \nStudy Sub-Sample")
+
+#plotting side by side
+MH_concern_bar_main_sub <- plot_grid(MH_concern_bar_main, MH_concern_bar_sub)
+```
+###Exporting
+```{r, eval = FALSE}
+ggsave("Provider_Type_Bar_Main.png", plot = prov_type_main_bar, width = 15, height = 15, units = "cm")
+
+ggsave("PPD_Screening_Bar_Main.png", plot = PPD_screening_main_bar, width = 15, height = 15, units = "cm")
+
+ggsave("Preg_MH_concern_main_bar.png", plot = MH_concern_bar_main, width = 15, height = 15, units = "cm")
+
+ggsave("Preg_MH_concern_sub_bar.png", plot = MH_concern_bar_sub, width = 15, height = 15, units = "cm")
+```
+
+#Bivariate - stratified by Prov Type
+```{r}
+##making color palette
+mycols2 <- plasma(5, begin = 0.25, end = 0.82, direction = -1)
+
+#race
+race_by_prov_bar <- LTM_cols_6 %>%
+  filter(!is.na(preg_provider_4)) %>%
+  filter(!is.na(racegrp_4)) %>%
+  ggplot(aes(x = preg_provider_4, fill = racegrp_leg_ordered)) +
+  geom_bar(position = "fill") +
+  labs(title = "Race by Provider Type",
+       fill = "Race",
+       x = "Maternity Care Provider Type",
+       y = "Proportion") +
+  scale_y_continuous(breaks = seq(0.00, 1.00, 0.10)) +
+  scale_fill_manual(values = mycols2) +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1)) +
+  theme(text = element_text(size=15)) +
+  guides(fill=guide_legend(title=NULL)) +
+  theme(legend.text = element_text(size = 12)) +
+  theme(legend.position="top")
+  
+
+#insurance
+##making color palette
+mycols_ins <- plasma(2, begin = 0.25, end = 0.5, direction = -1)
+
+insurance_prov_bar <- LTM_cols_6 %>%
+  filter(!is.na(preg_provider_4)) %>%
+  filter(!is.na(insurance_4)) %>%
+  ggplot(aes(x = preg_provider_4, fill = insurance_4)) +
+  geom_bar(position = "fill") +
+  labs(title = "Insurance Coverage by Provider Type",
+       fill = "Insurance Coverage",
+       x = "Maternity Care Provider Type",
+       y = "Proportion") +
+  scale_y_continuous(breaks = seq(0.00, 1.00, 0.10)) +
+  scale_fill_manual(values = mycols_ins) +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1)) +
+  theme(text = element_text(size=15)) +
+  guides(fill=guide_legend(title=NULL)) +
+  theme(legend.position="top")
+
+##education
+education_prov_bar <- LTM_cols_6 %>%
+  filter(!is.na(preg_provider_4)) %>%
+  filter(!is.na(education_4)) %>%
+  ggplot(aes(x = preg_provider_4, fill = education_4)) +
+  geom_bar(position = "fill") +
+  labs(title = "Education by Provider Type",
+       fill = "Highest Level Education",
+       x = "Maternity Care Provider Type",
+       y = "Proportion") +
+  scale_y_continuous(breaks = seq(0.00, 1.00, 0.10)) +
+  scale_fill_manual(values = mycols2) +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1))
+
+#Primary language
+primlang_prov_bar <- LTM_cols_6 %>%
+  filter(!is.na(preg_provider_4)) %>%
+  filter(!is.na(prim_lang_4)) %>%
+  ggplot(aes(x = preg_provider_4, fill = prim_lang_4)) +
+  geom_bar(position = "fill") +
+  labs(title = "Primary Language by Provider Type",
+       fill = "Primary Language Spoken at Home",
+       x = "Maternity Care Provider Type",
+       y = "Proportion") +
+  scale_y_continuous(breaks = seq(0.00, 1.00, 0.10)) +
+  scale_fill_manual(values = mycols2) +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1))
+```
+##Exporting
+```{r, eval = FALSE}
+#race
+ggsave("Race_by_Prov_bar.png", plot = race_by_prov_bar, width = 20, height = 18, units = "cm")
+
+#insurance
+ggsave("Insurance_by_Prov_bar.png", plot = insurance_prov_bar, width = 14, height = 15, units = "cm")
+
+#education
+ggsave("Education_by_Prov_bar.png", plot = education_prov_bar, width = 20, height = 15, units = "cm")
+
+#prim lang
+ggsave("PrimLang_by_Prov_bar.png", plot = primlang_prov_bar, width = 20, height = 15, units = "cm")
+```
+#Bivariate - stratified by PPD Screening
+```{r}
+#education
+mycols_screening <- plasma(2, begin = 0.6, end = 0.8, direction = -1)
+##position fill - better
+screening_by_education_bar <- LTM_cols_6 %>%
+  filter(!is.na(depression_screening)) %>%
+  filter(!is.na(education_4)) %>%
+  ggplot(aes(x = education_4, fill = depression_screening)) +
+  geom_bar(position = "fill") +
+  labs(title = "PPD Screening by Education",
+       fill = "PPD Screening",
+       x = "Highest Level of Education",
+       y = "Proportion") +
+  scale_y_continuous(breaks = seq(0.00, 1.00, 0.10)) +
+  scale_fill_manual(values = mycols_screening) +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1)) +
+  theme(text = element_text(size=15)) +
+  guides(fill=guide_legend(title=NULL)) +
+  theme(legend.position="top")
+
+##position dodge
+LTM_cols_6 %>%
+  filter(!is.na(depression_screening)) %>%
+  filter(!is.na(education_4)) %>%
+  ggplot(aes(x = education_4, fill = depression_screening)) +
+  geom_bar(position = position_dodge(preserve = "single")) +
+  labs(title = "PPD Screening by Education",
+       fill = "PPD Screening",
+       x = "Highest Level of Education",
+       y = "Proportion") +
+  scale_fill_manual(values = mycols_screening) +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1))
+
+#insurance
+mycols_ins_2 <- plasma(1, begin = 0.2, end = 0.3)
+#position dodge - better
+screening_by_ins_posdodge_bar <- LTM_cols_6 %>%
+  filter(!is.na(depression_screening)) %>%
+  filter(depression_screening == "Yes") %>%
+  filter(!is.na(insurance_4)) %>%
+  ggplot(aes(x =insurance_4, fill = depression_screening)) +
+  geom_bar(position = position_dodge(preserve = "single")) +
+  labs(title = "PPD Screening by Insurance Coverage",
+       fill = "PPD Screening",
+       x = "Insurance Coverage") +
+  scale_fill_manual(values = mycols_ins_2) +
+  theme(text = element_text(size=15)) +
+  guides(fill=guide_legend(title=NULL)) +
+  theme(legend.position="top") +  
+  theme(legend.position = "none")
+  
+
+#position single
+insurance_PPDscreening_bar <- LTM_cols_6 %>%
+  filter(!is.na(insurance_4)) %>%
+  filter(!is.na(depression_screening)) %>%
+  ggplot(aes(x = insurance_4, fill = depression_screening)) +
+  geom_bar(position = "fill") +
+  labs(title = "PPD Screening by Insurance Coverage",
+       fill = "PPD Screening",
+       x = "Insurance Coverage",
+       y = "Proportion") +
+  scale_y_continuous(breaks = seq(0.00, 1.00, 0.10)) +
+  scale_fill_manual(values = mycols_ins) +
+  theme(text = element_text(size=15)) +
+  guides(fill=guide_legend(title=NULL)) +
+  theme(legend.position="top") 
+
+#Primary language
+mycols_num_children <- plasma(3, begin = 0.3, end = 0.7, direction = -1)
+
+##position fill - better
+screening_primlang_bar <- LTM_cols_6 %>%
+  filter(!is.na(prim_lang_4)) %>%
+  filter(!is.na(depression_screening)) %>%
+  ggplot(aes(x = prim_lang_4, fill = depression_screening)) +
+  geom_bar(position = "fill") +
+  labs(title = "PPD Screening by Primary Language",
+       fill = "PPD Screening",
+       x = "Primary Language",
+       y = "Proportion") +
+  scale_y_continuous(breaks = seq(0.00, 1.00, 0.10)) +
+  scale_fill_manual(values = mycols_num_children) 
+
+##position dodge
+LTM_cols_6 %>%
+  filter(!is.na(prim_lang_4)) %>%
+  filter(!is.na(depression_screening)) %>%
+  ggplot(aes(x = prim_lang_4, fill = depression_screening)) +
+  geom_bar(position = position_dodge(preserve = "single")) +
+  labs(title = "PPD Screening by Primary Language",
+       fill = "PPD Screening",
+       x = "Primary Language",
+       y = "Proportion") +
+  scale_y_continuous(breaks = seq(0.00, 1.00, 0.10)) +
+  scale_fill_manual(values = mycols_num_children)
+
+#Number of children - don't use
+##position fill
+screening_by_numchildren_bar <- LTM_cols_6 %>%
+  filter(!is.na(num_children_cat_3)) %>%
+  filter(!is.na(depression_screening)) %>%
+  ggplot(aes(x = num_children_cat_3, fill = depression_screening)) +
+  geom_bar(position = "fill") +
+  labs(title = "PPD Screening by Number of Children",
+       fill = "PPD Screening",
+       x = "Number of Children",
+       y = "Proportion") +
+  scale_y_continuous(breaks = seq(0.00, 1.00, 0.10)) +
+  scale_fill_manual(values = mycols_num_children)
+
+##position dodge single
+LTM_cols_6 %>%
+  filter(!is.na(num_children_cat_3)) %>%
+  filter(!is.na(depression_screening)) %>%
+  ggplot(aes(x = num_children_cat_3, fill = depression_screening)) +
+  geom_bar(position = position_dodge(preserve = "single")) +
+  labs(title = "PPD Screening by Number of Children",
+       fill = "PPD Screening",
+       x = "Number of Children",
+       y = "Proportion") +
+  scale_y_continuous(breaks = seq(0.00, 1.00, 0.10)) +
+  scale_fill_manual(values = mycols_num_children)
+```
+##Exporting
+```{r, eval = FALSE}
+#education
+ggsave("Screening_by_Education.png", plot = screening_by_education_bar, width = 20, height = 18, units = "cm")
+
+#insurance
+ggsave("Screening_by_Ins_4Col.png", plot = insurance_PPDscreening_bar, width = 16, height = 18, units = "cm")
+ggsave("Screening_by_Ins_2Col.png", plot = screening_by_education_bar, width = 20, height = 15, units = "cm")
+ggsave("Screening_by_Ins_PosDodge.png", plot = screening_by_ins_posdodge_bar, width = 20, height = 18, units = "cm")
+
+#primary language
+ggsave("Screening_by_PrimLang.png", plot = screening_primlang_bar, width = 20, height = 15, units = "cm")
+```
