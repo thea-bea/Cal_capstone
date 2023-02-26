@@ -5,22 +5,35 @@ date: "2/18/2021"
 output: html_document
 ---
 
-Cleaning & exporting cleaned dataset
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
 
-#Importing original dataset
 ```{r}
 library(pacman)
 p_load(cowplot, tidyverse, haven, summarytools, survey, srvyr, plotrix, jtools, tableone, lmtest, Hmisc, dummies, aod)
-LTM_sav <- read_sav("LTMdata_2.public.sav")
 ```
+
+Cleaning & exporting cleaned dataset
+
+#Importing original dataset
+```{r, eval = F}
+LTM_sav <- read_sav("C:/Users/theab/Dropbox/school/Berkeley/Capstone/Capstone_Data/Capstone_Data_MASTER/LTMdata_2.public.sav")
+```
+
 ##Converting .sav to .csv and exporting
 ```{r, eval = FALSE}
 write.csv(LTM_sav, "LTM_m.csv")
 ```
+
 ##Loading .csv data
 ```{r}
-LTM <- read.csv("LTM_m.csv",
-                stringsAsFactors = T)
+LTM <-
+  read.csv(
+    "C:/Users/theab/Dropbox/school/Berkeley/Capstone/Capstone_Data/Capstone_Data_MASTER/LTM_m.csv",
+    stringsAsFactors = T
+  )
+
 names(LTM)
 ```
 
